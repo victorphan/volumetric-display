@@ -1,0 +1,16 @@
+Checks: |
+  modernize-*,
+  performance-*,
+  readability-*,
+  -readability-uppercase-literal-suffix,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  bugprone-*,
+  clang-analyzer-*,
+  misc-*,
+  cert-*,
+  hicpp-*,
+  -hicpp-uppercase-literal-suffix
