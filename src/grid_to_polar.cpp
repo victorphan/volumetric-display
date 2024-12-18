@@ -8,26 +8,31 @@
 #include <glm/ext/vector_uint3_sized.hpp>
 #include <iostream>
 #include <raylib.h>
+#include <rlgl.h>
 
 constexpr size_t length = 32;
 constexpr size_t width = 32;
 constexpr size_t height = 64;
-constexpr float speed = 0.01f;
-constexpr float horizontal_space = 1.0;
-constexpr float vertical_space = 1.0;
+constexpr float speed = 10.0f;
+constexpr float horizontal_space = 0.5;
+constexpr float vertical_space = 0.5;
 
 struct Grid3DColor {
-    std::array<std::array<std::array<Color, 100>, 100>, 100> grid{};
-    [[nodiscard]] auto getColor(glm::u8vec3 const& v) const -> Color { return grid[v[0]][v[1]][v[2]]; };
-    void update(long long delta) { delta++; }
+    std::array<std::array<std::array<Color, 10>, 10>, 10> grid{};
+    [[nodiscard]] static auto getColor(glm::u8vec3 const& /*v*/) -> Color {
+        /*v;*/
+        return RED;
+    };
+    void update(float delta) { delta++; }
 };
 
 struct Panel {
-    std::array<std::array<Color, width>, height> colors;
-    float angle;
-    void updatePosition(long long delta) { angle += speed * delta; }
+    std::array<std::array<Color, width>, height> colors{};
+    float angle = 0;
+    void updatePosition(float delta) { angle += speed * delta; }
 
-    [[nodiscard]] static auto toGridCoord(float r, float theta, float z) -> glm::u8vec3 {
+    [[nodiscard]] static auto toGridCoord(float r, float theta, float z) -> glm::vec3 {
+        /*return {r, theta, z};*/
         return {r * cos(theta), r * sin(theta), z};
     }
 
@@ -42,56 +47,92 @@ struct Panel {
         }
     }
 
-    void update(Grid3DColor const& grid, long long delta) {
+    void update(Grid3DColor const& grid, float delta) {
         updatePosition(delta);
         updateColors(grid);
     }
-    [[nodiscard]] auto serialize() const -> std::array<Color, width * height>;
+
+    void draw() const {
+        for (size_t row = 0; row < 16; row++) {
+            for (size_t col = 0; col < 32; col++) {
+                auto r = static_cast<float>(col) * horizontal_space;
+                auto theta = angle;
+                auto z = static_cast<float>(row) * vertical_space;
+                auto u8_coord = toGridCoord(r, theta, z);
+                auto coord = Vector3{u8_coord[0], u8_coord[2], u8_coord[1]};
+                DrawCube(coord, 0.1f, 0.1f, 0.1f, RED);
+                /*DrawSphere(Vector3{0, 0, 0}, 0.03f, RED);*/
+            }
+        }
+    }
+
+    /*[[nodiscard]] auto serialize() const -> std::array<Color, width * height>;*/
 };
 
-class Display {
+struct Display {
     Grid3DColor const& grid;
     std::array<Panel, 4> panels{};
 
-  public:
-    explicit Display(const Grid3DColor& grid) : grid(grid) {}
-    void update(uint64_t delta) {
+    explicit Display(const Grid3DColor& grid) : grid(grid) {
+        panels[1].angle = PI / 2;
+        panels[2].angle = PI;
+        panels[3].angle = 3 * PI / 2;
+    }
+
+    void update(float delta) {
         for (auto& panel : panels) {
             panel.update(grid, delta);
         }
     }
+
+    void draw() {
+        for (auto& panel : panels) {
+            panel.draw();
+        }
+    }
 };
 
+constexpr auto cube_position = Vector3{-0.5, -0.5, -0.5};
+constexpr float cube_width = 1.0;
+constexpr float cube_height = 1.0;
+constexpr float cube_length = 1.0;
+
 auto main() -> int {
-    std::cout << "before start!\n";
-    /*InitWindow(800, 400, "volumetric display sim");*/
-    /*SetTargetFPS(60);*/
-    std::cout << "start!\n";
-
+    std::cout << "start\n";
+    InitWindow(800, 400, "volumetric display sim");
+    SetTargetFPS(240);
+    /**/
     Grid3DColor grid{};
+    /*Panel panel{};*/
     Display display{grid};
-    auto prev_time = std::chrono::steady_clock::now();
-    /**/
-    /*Camera camera{};*/
-    /*camera.position = {.x = 16, .y = 16, .z = 16};*/
-    /*camera.target = {.x = 0, .y = 0, .z = 0};*/
-    /*camera.up = {.x = 0, .y = 1, .z = 0};*/
+    /*auto prev_time = GetTime();*/
 
-    /*while (!WindowShouldClose()) {*/
-    /*    BeginDrawing();*/
-    /*    ClearBackground(BLACK);*/
-    /**/
-    /*    auto delta = std::chrono::steady_clock::now() - prev_time;*/
-    /*    if (delta >= std::chrono::milliseconds(10)) {*/
-    /*        grid.update(delta.count());*/
-    /*        display.update(delta.count());*/
-    /*        prev_time = std::chrono::steady_clock::now();*/
-    /*    }*/
-    /**/
-    /*    EndDrawing();*/
-    /*}*/
-    std::cout << "done!\n";
+    Camera camera = {
+        .position = {20.0f, 20.0f, 20.0f}, // Camera position
+        .target = {0.0f, 0.0f, 0.0f},      // Camera looking at point
+        .up = {0.0f, 1.0f, 0.0f},          // Camera up vector (rotation towards target)
+        .fovy = 45.0f,                     // Camera field-of-view Y
+        .projection = CAMERA_PERSPECTIVE   // Camera projection type
+    };
 
-    /*CloseWindow();*/
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+        BeginMode3D(camera);
+        ClearBackground(BLACK);
+        DrawGrid(10, 5.0f);
+        /*auto delta = GetTime() - prev_time;*/
+        /*if (delta >= 0.01) {*/
+        /*std::cout << "delta: " << delta << '\n';*/
+        /*grid.update(static_cast<float>(delta));*/
+        std::cout << "frame delta: " << GetFrameTime() << '\n';
+        display.update(GetFrameTime());
+        /*prev_time = GetTime();*/
+        /*}*/
+        display.draw();
+        EndMode3D();
+        EndDrawing();
+    }
+
+    CloseWindow();
     return 0;
 }

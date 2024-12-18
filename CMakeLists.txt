@@ -18,3 +18,6 @@ find_package(glm)
 find_package(raylib)
 add_executable(grid_to_polar src/grid_to_polar.cpp)
 target_link_libraries(grid_to_polar glm::glm raylib)
+
+add_executable(rotating_cube src/rotating_cube_voxel.cpp)
+target_link_libraries(rotating_cube glm::glm raylib)
